@@ -164,7 +164,7 @@ control MyIngress(inout headers hdr,
     
     table arp_ternary {
         key = {
-            har.arp.oper : ternary;
+            hdr.arp.oper : ternary;
             hdr.ipv4.dstAddr: lpm;
         }
         actions = {
@@ -179,7 +179,7 @@ control MyIngress(inout headers hdr,
         if (hdr.ipv4.isValid()) {
             ipv4_lpm.apply();
         }//当ipv4头部有效，应用ipv4_lpm表
-        else (hdr.arp.isValid()) {
+        else if (hdr.arp.isValid()) {
             arp_ternary.apply();
         }//当arp头部有效，应用arp_ternary表
     }
