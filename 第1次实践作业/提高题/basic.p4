@@ -50,14 +50,14 @@ header arp_t {
 }//arp的头部结构
 
 header arp_ipv4_t {
-    mac_addr_t  sha;//发送方硬件地址
-    ipv4_addr_t spa;//发送方协议地址
-    mac_addr_t  tha;//目标硬件地址
-    ipv4_addr_t tpa;//目标协议地址
+    macAddr_t  sha;//发送方硬件地址
+    ip4Addr_t spa;//发送方协议地址
+    macAddr_t  tha;//目标硬件地址
+    ip4Addr_t tpa;//目标协议地址
 }
 
 struct metadata {
-    ipv4_addr_t dst_ipv4;
+    ip4Addr_t dst_ipv4;
 }
 
 struct headers {
