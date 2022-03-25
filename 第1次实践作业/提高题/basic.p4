@@ -154,10 +154,10 @@ control MyIngress(inout headers hdr,
         
         hdr.arp.oper         = ARP_OPER_REPLY;
         
-        hdr.arp_ipv4.tha     = hdr.arp_ipv4.sha;//将目标硬件地址（tha）设置为到达arp数据包的发送方硬件地址（sha）
-        hdr.arp_ipv4.tpa     = hdr.arp_ipv4.spa;//将目标协议地址（tpa）设置为到达arp数据包的发送方协议地址（spa）
-        hdr.arp_ipv4.sha     = dstAddr;//发送方硬件地址（sha）更新为交换机的mac地址
-        hdr.arp_ipv4.spa     = meta.dst_ipv4;发送方协议地址（spa）更新为交换机的ip地址
+        hdr.arp_ipv4.tha     = hdr.arp_ipv4.sha;//将目标mac地址（tha）设置为到达arp数据包的发送方ip地址（sha）
+        hdr.arp_ipv4.tpa     = hdr.arp_ipv4.spa;//将目标ip地址（tpa）设置为到达arp数据包的发送方ip地址（spa）
+        hdr.arp_ipv4.sha     = dstAddr;//发送方mac地址（sha）更新为交换机的mac地址
+        hdr.arp_ipv4.spa     = meta.dst_ipv4;//发送方ip地址（spa）更新为交换机的ip地址
 
         standard_metadata.egress_spec = standard_metadata.ingress_port;
     }
