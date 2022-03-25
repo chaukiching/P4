@@ -1,0 +1,172 @@
+/* -*- P4_16 -*- */
+#include <core.p4>
+#include <v1model.p4>
+
+const bit<16> TYPE_IPV4 = 0x800;
+
+/*************************************************************************
+*********************** H E A D E R S  ***********************************
+*************************************************************************/
+
+typedef bit<9>  egressSpec_t;
+typedef bit<48> macAddr_t;
+typedef bit<32> ip4Addr_t;
+
+header ethernet_t {
+    macAddr_t dstAddr;
+    macAddr_t srcAddr;
+    bit<16>   etherType;
+}
+
+header ipv4_t {
+    bit<4>    version;
+    bit<4>    ihl;
+    bit<8>    diffserv;
+    bit<16>   totalLen;
+    bit<16>   identification;
+    bit<3>    flags;
+    bit<13>   fragOffset;
+    bit<8>    ttl;
+    bit<8>    protocol;
+    bit<16>   hdrChecksum;
+    ip4Addr_t srcAddr;
+    ip4Addr_t dstAddr;
+}
+
+struct metadata {
+    /* empty */
+}
+
+struct headers {
+    ethernet_t   ethernet;
+    ipv4_t       ipv4;
+}
+
+/*************************************************************************
+*********************** P A R S E R  ***********************************
+*************************************************************************/
+
+parser MyParser(packet_in packet,
+                out headers hdr,
+                inout metadata meta,
+                inout standard_metadata_t standard_metadata) {
+
+    state start {
+        packet.extract(hdr.ethernet);//从数据报文指针开始位置，抽取以太网包头
+        transition select(hdr.ethernet.etherType) {
+            TYPE_IPV4: parse_ipv4;//若为0x0800，则转换到parse_ipv4状态
+            default: accept;//若都不是则接受
+        }//根据协议类型切换至不同状态，类似C语言中的switch...case
+    }
+
+    state parse_ipv4 {
+        packet.extract(hdr.ipv4);//抽取ipv4包头
+        transition accept;
+    }
+
+}
+
+/*************************************************************************
+************   C H E C K S U M    V E R I F I C A T I O N   *************
+*************************************************************************/
+
+control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
+    apply {  }
+}
+
+
+/*************************************************************************
+**************  I N G R E S S   P R O C E S S I N G   *******************
+*************************************************************************/
+
+control MyIngress(inout headers hdr,
+                  inout metadata meta,
+                  inout standard_metadata_t standard_metadata) {
+    action drop() {
+        mark_to_drop(standard_metadata);
+    }
+
+    action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
+        standard_metadata.egress_spec = port;//将端口参数赋值给输出端口
+        hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;//数据包的源地址改为目的地址
+        hdr.ethernet.dstAddr = dstAddr;//目的地址改为新地址
+        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;//ttl减1
+    }
+
+    table ipv4_lpm {
+        key = {
+            hdr.ipv4.dstAddr: lpm;//key值为数据包头部字段的ipv4头部的目的地址，lpm为最长前缀匹配模式
+        }
+        actions = {
+            ipv4_forward;
+            drop;
+            NoAction;
+        }//表中可执行的动作
+        size = 1024;
+        default_action = drop();
+    }
+
+    apply {
+        if (hdr.ipv4.isValid()) {
+            ipv4_lpm.apply();
+        }//只有当ipv4头部有效，ipv4_lpm表才可以被应用
+    }
+}
+
+/*************************************************************************
+****************  E G R E S S   P R O C E S S I N G   *******************
+*************************************************************************/
+
+control MyEgress(inout headers hdr,
+                 inout metadata meta,
+                 inout standard_metadata_t standard_metadata) {
+    apply {  }
+}
+
+/*************************************************************************
+*************   C H E C K S U M    C O M P U T A T I O N   **************
+*************************************************************************/
+
+control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
+     apply {
+        update_checksum(
+        hdr.ipv4.isValid(),
+            { hdr.ipv4.version,
+              hdr.ipv4.ihl,
+              hdr.ipv4.diffserv,
+              hdr.ipv4.totalLen,
+              hdr.ipv4.identification,
+              hdr.ipv4.flags,
+              hdr.ipv4.fragOffset,
+              hdr.ipv4.ttl,
+              hdr.ipv4.protocol,
+              hdr.ipv4.srcAddr,
+              hdr.ipv4.dstAddr },
+            hdr.ipv4.hdrChecksum,
+            HashAlgorithm.csum16);
+    }
+}
+
+/*************************************************************************
+***********************  D E P A R S E R  *******************************
+*************************************************************************/
+
+control MyDeparser(packet_out packet, in headers hdr) {
+    apply {
+        packet.emit(hdr.ethernet);
+        packet.emit(hdr.ipv4);
+    }//解析后的头部必须再次添加到数据包中
+}
+
+/*************************************************************************
+***********************  S W I T C H  *******************************
+*************************************************************************/
+
+V1Switch(
+MyParser(),//解析数据包，提取包头
+MyVerifyChecksum(),//检验和校验
+MyIngress(),//输入处理
+MyEgress(),//输出处理
+MyComputeChecksum(),//计算新的校验和
+MyDeparser()//逆解析器
+) main;
