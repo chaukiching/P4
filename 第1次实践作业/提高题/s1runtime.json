@@ -58,21 +58,21 @@
       "match": {
        "hdr.arp.oper": [1],
        "hdr.arp_ipv4.tpa": ["10.0.1.10", 32]
-     },
-     "action_name": "MyIngress.send_arp_reply",
-     "action_params": {
-       "dstAddr": "08:00:00:00:01:00"
+      },
+      "action_name": "MyIngress.send_arp_reply",
+      "action_params": {
+        "dstAddr": "08:00:00:00:01:00"
       }
-   },
-   {
-     "table": "MyIngress.arp_exact",
-     "match": {
-       "hdr.arp.oper": [1],
-       "hdr.arp_ipv4.tpa": ["10.0.2.20", 32]
-     },
-     "action_name": "MyIngress.send_arp_reply",
-     "action_params": {
-       "dstAddr": "08:00:00:00:02:00"
+    },
+    {
+      "table": "MyIngress.arp_exact",
+      "match": {
+        "hdr.arp.oper": [1],
+        "hdr.arp_ipv4.tpa": ["10.0.2.20", 32]
+      },
+      "action_name": "MyIngress.send_arp_reply",
+      "action_params": {
+        "dstAddr": "08:00:00:00:02:00"
       }
     }
   ]
