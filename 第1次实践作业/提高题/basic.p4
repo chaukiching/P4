@@ -165,8 +165,8 @@ control MyIngress(inout headers hdr,
     table arp_ternary {
         key = {
             hdr.arp.oper : ternary;
-            hdr.ipv4.dstAddr: lpm;
-        }
+            hdr.arp_ipv4.tpa: lpm;
+        }//key值为数据包头部字段的arp头部的操作类型，以及目标ip地址
         actions = {
             send_arp_reply;
             drop;
