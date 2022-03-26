@@ -162,9 +162,9 @@ control MyIngress(inout headers hdr,
         standard_metadata.egress_spec = standard_metadata.ingress_port;
     }
     
-    table arp_ternary {
+    table arp_exact {
         key = {
-            hdr.arp.oper : ternary;
+            hdr.arp.oper : exact;
             hdr.arp_ipv4.tpa: lpm;
         }//key值为数据包头部字段的arp头部的操作类型，以及目标ip地址
         actions = {
@@ -180,7 +180,7 @@ control MyIngress(inout headers hdr,
             ipv4_lpm.apply();
         }//当ipv4头部有效，应用ipv4_lpm表
         else if (hdr.arp.isValid()) {
-            arp_ternary.apply();
+            arp_exact.apply();
         }//当arp头部有效，应用arp_ternary表
     }
 }
