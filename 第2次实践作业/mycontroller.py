@@ -13,6 +13,7 @@ sys.path.append(
                  '../../utils/'))
 import p4runtime_lib.bmv2
 import p4runtime_lib.helper
+from p4runtime_lib.error_utils import printGrpcError
 from p4runtime_lib.switch import ShutdownAllSwitchConnections
 
 SWITCH_TO_HOST_PORT = 1
@@ -102,6 +103,7 @@ def writeTunnelRules(p4info_helper, ingress_sw, egress_sw, tunnel_id,
 def readTableRules(p4info_helper, sw):
     """
     Reads the table entries from all tables on the switch.
+    
     :param p4info_helper: the P4Info helper
     :param sw: the switch connection
     """
@@ -122,13 +124,16 @@ def readTableRules(p4info_helper, sw):
             for p in action.params:
                 print(p4info_helper.get_action_param_name(action_name, p.param_id), end=' ')
                 print('%r' % p.value, end=' ')
-            print()
+            print(entry)
+            print('-----')
+
 
 def printCounter(p4info_helper, sw, counter_name, index):
     """
     Reads the specified counter at the specified index from the switch. In our
     program, the index is the tunnel ID. If the index is 0, it will return all
     values from the counter.
+    
     :param p4info_helper: the P4Info helper
     :param sw:  the switch connection
     :param counter_name: the name of the counter from the P4 program
@@ -141,13 +146,6 @@ def printCounter(p4info_helper, sw, counter_name, index):
                 sw.name, counter_name, index,
                 counter.data.packet_count, counter.data.byte_count
             ))
-
-def printGrpcError(e):
-    print("gRPC Error:", e.details(), end=' ')
-    status_code = e.code()
-    print("(%s)" % status_code.name, end=' ')
-    traceback = sys.exc_info()[2]
-    print("[%s:%d]" % (traceback.tb_frame.f_code.co_filename, traceback.tb_lineno))
 
 def main(p4info_file_path, bmv2_file_path):
     # Instantiate a P4Runtime helper from the p4info file
