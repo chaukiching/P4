@@ -114,6 +114,7 @@ def writeTunnelRules(p4info_helper, ingress_sw, egress_sw, tunnel_id,
 def readTableRules(p4info_helper, sw):
     """
     Reads the table entries from all tables on the switch.
+    从交换机上的所有表中读取表条目
     
     :param p4info_helper: the P4Info helper
     :param sw: the switch connection
@@ -121,21 +122,23 @@ def readTableRules(p4info_helper, sw):
     print('\n----- Reading tables rules for %s -----' % sw.name)
     for response in sw.ReadTableEntries():
         for entity in response.entities:
-            entry = entity.table_entry
+            entry = entity.table_entry 
             # TODO For extra credit, you can use the p4info_helper to translate
             #      the IDs in the entry to names
             # 使用 p4info_helper 将条目中的 ID 转换为名称
-            table_name = p4info_helper.get_tables_name(entry.table_id)
+            
+            table_name = p4info_helper.get_tables_name(entry.table_id) # 利用 get_tables_name 函数得到表名
             print('%s: ' % table_name, end=' ')
             for m in entry.match:
-                print(p4info_helper.get_match_field_name(table_name, m.field_id), end=' ')
-                print('%r' % (p4info_helper.get_match_field_value(m),), end=' ')
-            action = entry.action.action
-            action_name = p4info_helper.get_actions_name(action.action_id)
+                print(p4info_helper.get_match_field_name(table_name, m.field_id), end=' ') # 利用 get_match_field_name 函数得到匹配域中各匹配项名
+                print('%r' % (p4info_helper.get_match_field_value(m),), end=' ') # 利用 get_match_field_value 函数得到匹配项的值
+            action = entry.action.action 
+            action_name = p4info_helper.get_actions_name(action.action_id) # 利用 get_actions_name 函数得到动作名
             print('->', action_name, end=' ')
-            for p in action.params:
+            for p in action.params: # 得到动作参数名和值
                 print(p4info_helper.get_action_param_name(action_name, p.param_id), end=' ')
                 print('%r' % p.value, end=' ')
+                
             print(entry)
             print('-----')
 
@@ -145,6 +148,7 @@ def printCounter(p4info_helper, sw, counter_name, index):
     Reads the specified counter at the specified index from the switch. In our
     program, the index is the tunnel ID. If the index is 0, it will return all
     values from the counter.
+    从交换机中读取指定索引对应的计数器，索引是隧道ID，如果索引为0，它将从计数器中返回所有值。
     
     :param p4info_helper: the P4Info helper
     :param sw:  the switch connection
@@ -161,12 +165,15 @@ def printCounter(p4info_helper, sw, counter_name, index):
 
 def main(p4info_file_path, bmv2_file_path):
     # Instantiate a P4Runtime helper from the p4info file
-    p4info_helper = p4runtime_lib.helper.P4InfoHelper(p4info_file_path)
+    p4info_helper = p4runtime_lib.helper.P4InfoHelper(p4info_file_path) # 初始化 p4info_helper
 
     try:
         # Create a switch connection object for s1 and s2;
+        # 为s1和s2创建交换机连接对象
         # this is backed by a P4Runtime gRPC connection.
+        # 这是由一个运行时gRPC连接支持的
         # Also, dump all P4Runtime messages sent to switch to given txt files.
+        # 此外，将发送给交换机的所有 P4Runtime 消息转存到给定的 txt 文件
         s1 = p4runtime_lib.bmv2.Bmv2SwitchConnection(
             name='s1',
             address='127.0.0.1:50051',
@@ -184,6 +191,7 @@ def main(p4info_file_path, bmv2_file_path):
         s2.MasterArbitrationUpdate()
 
         # Install the P4 program on the switches
+        # 在交换机上安装 P4 程序
         s1.SetForwardingPipelineConfig(p4info=p4info_helper.p4info,
                                        bmv2_json_file_path=bmv2_file_path)
         print("Installed P4 Program using SetForwardingPipelineConfig on s1")
@@ -200,6 +208,7 @@ def main(p4info_file_path, bmv2_file_path):
                          dst_eth_addr="08:00:00:00:01:11", dst_ip_addr="10.0.1.1")
 
         # TODO Uncomment the following two lines to read table entries from s1 and s2
+        # 读取 s1 和 s2 中的表条目
         readTableRules(p4info_helper, s1)
         readTableRules(p4info_helper, s2)
 
