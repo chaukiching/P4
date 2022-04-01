@@ -84,7 +84,7 @@ def writeTunnelRules(p4info_helper, ingress_sw, egress_sw, tunnel_id,
         }, # 设置匹配域
         action_name="MyIngress.myTunnel_forward", # 定义动作名
         action_params={
-            "port": , switch_port # 动作参数是端口
+            "port": switch_port # 动作参数是端口
         })
     ingress_sw.WriteTableEntry(table_entry) # 调用 WriteTableEntry ，将生成的匹配动作表项加入交换机
     print("Installed transit tunnel rule on %s" % ingress_sw.name)
