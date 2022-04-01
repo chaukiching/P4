@@ -17,7 +17,7 @@ from p4runtime_lib.error_utils import printGrpcError
 from p4runtime_lib.switch import ShutdownAllSwitchConnections
 
 SWITCH_TO_HOST_PORT = 1
-SWITCH_TO_SWITCH_PORT = 2
+SWITCH_TO_SWITCH_PORT = 2 # 指定了交换机的端口号
 
 
 def writeTunnelRules(p4info_helper, ingress_sw, egress_sw, tunnel_id,
@@ -26,10 +26,13 @@ def writeTunnelRules(p4info_helper, ingress_sw, egress_sw, tunnel_id,
     Installs three rules:
     1) An tunnel ingress rule on the ingress switch in the ipv4_lpm table that
        encapsulates traffic into a tunnel with the specified ID
+       ipv4_lpm 表中入交换机上的隧道入口规则，将流量封装到具有指定 ID 的隧道中
     2) A transit rule on the ingress switch that forwards traffic based on
        the specified ID
+       入交换机上的传输规则，该规则根据指定的 ID 转发流量
     3) An tunnel egress rule on the egress switch that decapsulates traffic
        with the specified ID and sends it to the host
+       出交换机上的隧道出口规则，使用指定的 ID 对流量解封装，并将其发送到主机
     :param p4info_helper: the P4Info helper
     :param ingress_sw: the ingress switch connection
     :param egress_sw: the egress switch connection
@@ -38,29 +41,34 @@ def writeTunnelRules(p4info_helper, ingress_sw, egress_sw, tunnel_id,
     :param dst_ip_addr: the destination Ethernet address to write in the
                         egress rule
     """
-    # 1) Tunnel Ingress Rule
+    # 1) Tunnel Ingress Rule 隧道入口规则
     table_entry = p4info_helper.buildTableEntry(
-        table_name="MyIngress.ipv4_lpm",
+        table_name="MyIngress.ipv4_lpm", # 定义表名
         match_fields={
             "hdr.ipv4.dstAddr": (dst_ip_addr, 32)
-        },
-        action_name="MyIngress.myTunnel_ingress",
-        action_params={
-            "dst_id": tunnel_id,
+            # 若包头对应的 hdr.ipv4.dstAddr 字段与参数中的 dst_ip_addr 匹配，则执行这一条表项的对应动作
+        }, # 设置匹配域
+        action_name="MyIngress.myTunnel_ingress", # 定义动作名
+        action_params={ 
+            "dst_id": tunnel_id, # 动作参数是 tunnel_id
         })
-    ingress_sw.WriteTableEntry(table_entry)
+    # 需要使用 p4info_helper 解析器来将规则转化为 P4Runtime 能够识别的形式
+    ingress_sw.WriteTableEntry(table_entry) # 调用 WriteTableEntry ，将生成的匹配动作表项加入交换机
     print("Installed ingress tunnel rule on %s" % ingress_sw.name)
 
-    # 2) Tunnel Transit Rule
-    # The rule will need to be added to the myTunnel_exact table and match on
-    # the tunnel ID (hdr.myTunnel.dst_id). Traffic will need to be forwarded
-    # using the myTunnel_forward action on the port connected to the next switch.
-    #
+    # 2) Tunnel Transit Rule 隧道传输规则
+    # The rule will need to be added to the myTunnel_exact table and match on 
+    # the tunnel ID (hdr.myTunnel.dst_id). Traffic will need to be forwarded 
+    # using the myTunnel_forward action on the port connected to the next switch. 
+    # 需要将规则添加到myTunnel_exact表中并匹配隧道 ID (hdr.myTunnel.dst_id)。
+    # 需要在连接到下一个交换机的端口上使用myTunnel_forward操作转发流量。
+    
     # For our simple topology, switch 1 and switch 2 are connected using a
     # link attached to port 2 on both switches. We have defined a variable at
     # the top of the file, SWITCH_TO_SWITCH_PORT, that you can use as the output
     # port for this action.
-    #
+    # 对于我们的简单拓扑结构，交换机1和交换机2使用连接到两个交换机上端口2的链路进行连接。
+    
     # We will only need a transit rule on the ingress switch because we are
     # using a simple topology. In general, you'll need on transit rule for
     # each switch in the path (except the last switch, which has the egress rule),
@@ -70,22 +78,25 @@ def writeTunnelRules(p4info_helper, ingress_sw, egress_sw, tunnel_id,
     # TODO build the transit rule
     # TODO install the transit rule on the ingress switch
     table_entry = p4info_helper.buildTableEntry(
-        table_name="MyIngress.myTunnel_exact",
+        table_name="MyIngress.myTunnel_exact", # 定义表名
         match_fields={
-            "hdr.myTunnel.dst_id": tunnel_id
-        },
-        action_name="MyIngress.myTunnel_forward",
+            "hdr.myTunnel.dst_id": tunnel_id # 匹配隧道 ID (hdr.myTunnel.dst_id)
+        }, # 设置匹配域
+        action_name="MyIngress.myTunnel_forward", # 定义动作名
         action_params={
-            "port": SWITCH_TO_SWITCH_PORT
+            "port": SWITCH_TO_SWITCH_PORT # 动作参数是端口 2
         })
-    ingress_sw.WriteTableEntry(table_entry)
+    ingress_sw.WriteTableEntry(table_entry) # 调用 WriteTableEntry ，将生成的匹配动作表项加入交换机
     print("Installed transit tunnel rule on %s" % ingress_sw.name)
 
-    # 3) Tunnel Egress Rule
+    # 3) Tunnel Egress Rule 隧道出口规则
     # For our simple topology, the host will always be located on the
     # SWITCH_TO_HOST_PORT (port 1).
+    # 对于我们的简单拓扑结构，主机将始终位于交换机端口 1 上
+    
     # In general, you will need to keep track of which port the host is
     # connected to.
+    
     table_entry = p4info_helper.buildTableEntry(
         table_name="MyIngress.myTunnel_exact",
         match_fields={
@@ -113,6 +124,7 @@ def readTableRules(p4info_helper, sw):
             entry = entity.table_entry
             # TODO For extra credit, you can use the p4info_helper to translate
             #      the IDs in the entry to names
+            # 使用 p4info_helper 将条目中的 ID 转换为名称
             table_name = p4info_helper.get_tables_name(entry.table_id)
             print('%s: ' % table_name, end=' ')
             for m in entry.match:
