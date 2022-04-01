@@ -21,7 +21,7 @@ SWITCH_TO_SWITCH_PORT = 2 # 指定了交换机的端口号
 
 
 def writeTunnelRules(p4info_helper, ingress_sw, egress_sw, tunnel_id,
-                     dst_eth_addr, dst_ip_addr):
+                     dst_eth_addr, dst_ip_addr, switch_port):
     """
     Installs three rules:
     1) An tunnel ingress rule on the ingress switch in the ipv4_lpm table that
@@ -84,7 +84,7 @@ def writeTunnelRules(p4info_helper, ingress_sw, egress_sw, tunnel_id,
         }, # 设置匹配域
         action_name="MyIngress.myTunnel_forward", # 定义动作名
         action_params={
-            "port": SWITCH_TO_SWITCH_PORT # 动作参数是端口 2
+            "port": , switch_port # 动作参数是端口
         })
     ingress_sw.WriteTableEntry(table_entry) # 调用 WriteTableEntry ，将生成的匹配动作表项加入交换机
     print("Installed transit tunnel rule on %s" % ingress_sw.name)
@@ -184,11 +184,17 @@ def main(p4info_file_path, bmv2_file_path):
             address='127.0.0.1:50052',
             device_id=1,
             proto_dump_file='logs/s2-p4runtime-requests.txt')
+        s3 = p4runtime_lib.bmv2.Bmv2SwitchConnection(
+            name='s3',
+            address='127.0.0.1:50053',
+            device_id=2,
+            proto_dump_file='logs/s3-p4runtime-requests.txt')
 
         # Send master arbitration update message to establish this controller as
         # master (required by P4Runtime before performing any other write operation)
         s1.MasterArbitrationUpdate()
         s2.MasterArbitrationUpdate()
+        s3.MasterArbitrationUpdate()
 
         # Install the P4 program on the switches
         # 在交换机上安装 P4 程序
@@ -198,28 +204,62 @@ def main(p4info_file_path, bmv2_file_path):
         s2.SetForwardingPipelineConfig(p4info=p4info_helper.p4info,
                                        bmv2_json_file_path=bmv2_file_path)
         print("Installed P4 Program using SetForwardingPipelineConfig on s2")
+        s3.SetForwardingPipelineConfig(p4info=p4info_helper.p4info,
+                                       bmv2_json_file_path=bmv2_file_path)
+        print("Installed P4 Program using SetForwardingPipelineConfig on s3")
 
         # Write the rules that tunnel traffic from h1 to h2
         writeTunnelRules(p4info_helper, ingress_sw=s1, egress_sw=s2, tunnel_id=100,
-                         dst_eth_addr="08:00:00:00:02:22", dst_ip_addr="10.0.2.2")
+                         dst_eth_addr="08:00:00:00:02:22", dst_ip_addr="10.0.2.2", switch_port=2)
 
         # Write the rules that tunnel traffic from h2 to h1
-        writeTunnelRules(p4info_helper, ingress_sw=s2, egress_sw=s1, tunnel_id=200,
-                         dst_eth_addr="08:00:00:00:01:11", dst_ip_addr="10.0.1.1")
+        writeTunnelRules(p4info_helper, ingress_sw=s2, egress_sw=s1, tunnel_id=101,
+                         dst_eth_addr="08:00:00:00:01:11", dst_ip_addr="10.0.1.1", switch_port=2)
+        
+        # Write the rules that tunnel traffic from h1 to h3
+        writeTunnelRules(p4info_helper, ingress_sw=s1, egress_sw=s3, tunnel_id=200,
+                         dst_eth_addr="08:00:00:00:03:33", dst_ip_addr="10.0.3.3", switch_port=3)
+        
+        # Write the rules that tunnel traffic from h3 to h1
+        writeTunnelRules(p4info_helper, ingress_sw=s3, egress_sw=s1, tunnel_id=201,
+                         dst_eth_addr="08:00:00:00:01:11", dst_ip_addr="10.0.1.1", switch_port=2)
+        
+        # Write the rules that tunnel traffic from h2 to h3
+        writeTunnelRules(p4info_helper, ingress_sw=s2, egress_sw=s3, tunnel_id=300,
+                         dst_eth_addr="08:00:00:00:03:33", dst_ip_addr="10.0.3.3", switch_port=3)
+        
+        # Write the rules that tunnel traffic from h3 to h2
+        writeTunnelRules(p4info_helper, ingress_sw=s3, egress_sw=s2, tunnel_id=301,
+                         dst_eth_addr="08:00:00:00:02:22", dst_ip_addr="10.0.2.2", switch_port=3)
 
         # TODO Uncomment the following two lines to read table entries from s1 and s2
         # 读取 s1 和 s2 中的表条目
         readTableRules(p4info_helper, s1)
         readTableRules(p4info_helper, s2)
+        readTableRules(p4info_helper, s3)
 
         # Print the tunnel counters every 2 seconds
         while True:
             sleep(2)
             print('\n----- Reading tunnel counters -----')
+            print('\n----- s1 ->  s2 -----')
             printCounter(p4info_helper, s1, "MyIngress.ingressTunnelCounter", 100)
             printCounter(p4info_helper, s2, "MyIngress.egressTunnelCounter", 100)
-            printCounter(p4info_helper, s2, "MyIngress.ingressTunnelCounter", 200)
-            printCounter(p4info_helper, s1, "MyIngress.egressTunnelCounter", 200)
+            print('\n----- s2 ->  s1 -----')
+            printCounter(p4info_helper, s2, "MyIngress.ingressTunnelCounter", 101)
+            printCounter(p4info_helper, s1, "MyIngress.egressTunnelCounter", 101)
+            print('\n----- s1 ->  s3 -----')
+            printCounter(p4info_helper, s1, "MyIngress.ingressTunnelCounter", 200)
+            printCounter(p4info_helper, s3, "MyIngress.egressTunnelCounter", 200)
+            print('\n----- s3 ->  s1 -----')
+            printCounter(p4info_helper, s3, "MyIngress.ingressTunnelCounter", 201)
+            printCounter(p4info_helper, s1, "MyIngress.egressTunnelCounter", 201)
+            print('\n----- s2 ->  s3 -----')
+            printCounter(p4info_helper, s2, "MyIngress.ingressTunnelCounter", 300)
+            printCounter(p4info_helper, s3, "MyIngress.egressTunnelCounter", 300)
+            print('\n----- s3 ->  s2 -----')
+            printCounter(p4info_helper, s3, "MyIngress.ingressTunnelCounter", 301)
+            printCounter(p4info_helper, s2, "MyIngress.egressTunnelCounter", 301)
 
     except KeyboardInterrupt:
         print(" Shutting down.")
