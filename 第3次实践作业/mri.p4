@@ -109,6 +109,12 @@ parser MyParser(packet_in packet,
     }
 
     state parse_ipv4_option {
+        /*
+        * TODO: Add logic to:
+        * - Extract the ipv4_option header.
+        *   - If value is equal to IPV4_OPTION_MRI, transition to parse_mri.
+        *   - Otherwise, accept.
+        */
         packet.extract(hdr.ipv4_option); //提取ipv4_option包头
         transition select(hdr.ipv4_option.option) { //选择hdr.ipv4_option.option的值
             IPV4_OPTION_MRI: parse_mri; //如果值等于IPV4_OPTION_MRI，则转换到parse_mri状态
@@ -117,6 +123,14 @@ parser MyParser(packet_in packet,
     }
 
     state parse_mri {
+        /*
+        * TODO: Add logic to:
+        * - Extract hdr.mri.
+        * - Set meta.parser_metadata.remaining to hdr.mri.count
+        * - Select on the value of meta.parser_metadata.remaining
+        *   - If the value is equal to 0, accept.
+        *   - Otherwise, transition to parse_swtrace.
+        */
         packet.extract(hdr.mri); //提取mri包头
         meta.parser_metadata.remaining = hdr.mri.count; //在parse_mri状态下，remaining字段的值应该设置为hdr.mri.count
         transition select(meta.parser_metadata.remaining) { //选择meta.parser_metadata.remaining的值
@@ -126,6 +140,14 @@ parser MyParser(packet_in packet,
     }
 
     state parse_swtrace {
+        /*
+        * TODO: Add logic to:
+        * - Extract hdr.swtraces.next.
+        * - Decrement meta.parser_metadata.remaining by 1
+        * - Select on the value of meta.parser_metadata.remaining
+        *   - If the value is equal to 0, accept.
+        *   - Otherwise, transition to parse_swtrace.
+        */
         packet.extract(hdr.swtraces.next); //提取swtraces.next包头
         meta.parser_metadata.remaining = meta.parser_metadata.remaining  - 1; //在parse_swtrace状态下，remaining字段的值应该递减
         transition select(meta.parser_metadata.remaining) {
@@ -191,20 +213,24 @@ control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
     action add_swtrace(switchID_t swid) {
+        /*
+        * TODO: add logic to:
+        - Increment hdr.mri.count by 1
+        - Add a new swtrace header by calling push_front(1) on hdr.swtraces.
+        - Set hdr.swtraces[0].swid to the id parameter
+        - Set hdr.swtraces[0].qdepth to (qdepth_t)standard_metadata.deq_qdepth
+        - Increment hdr.ipv4.ihl by 2
+        - Increment hdr.ipv4.totalLen by 8
+        - Increment hdr.ipv4_option.optionLength by 8
+        */
         hdr.mri.count = hdr.mri.count + 1; //hdr.mri.count增加1，表示传输路径上增加1跳交换机（相当于路由）
         hdr.swtraces.push_front(1); //调用push_front(1)来添加1个新的swtrace头
-        // According to the P4_16 spec, pushed elements are invalid, so we need
-        // to call setValid(). Older bmv2 versions would mark the new header(s)
-        // valid automatically (P4_14 behavior), but starting with version 1.11,
-        // bmv2 conforms with the P4_16 spec.
         hdr.swtraces[0].setValid(); //需要额外调用setValid()使新增的头部（在队首，hdr.swtraces[0]）生效
         hdr.swtraces[0].swid = swid; //设置为当前交换机的id
         hdr.swtraces[0].qdepth = (qdepth_t)standard_metadata.deq_qdepth; //设置为标准元数据记录的实时队列长度
-
         hdr.ipv4.ihl = hdr.ipv4.ihl + 2; //hdr.ipv4.ihl（首部长度）加2，即增加64bits，因为每个Switch_t是64bits，包含32bits的swid和32bits的qdepth
         hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength + 8; //hdr.ipv4.totalLen加8 bytes
         hdr.ipv4.totalLen = hdr.ipv4.totalLen + 8; //hdr.ipv4_option.optionLength加8 bytes
-
     }
 
     table swtrace {
@@ -217,6 +243,11 @@ control MyEgress(inout headers hdr,
     }
 
     apply {
+        /*
+        * TODO: add logic to:
+        * - If hdr.mri is valid:
+        *   - Apply table swtrace
+        */
         if (hdr.mri.isValid()) {
             swtrace.apply();
         }//只有当mri头部有效，swtrace表才可以被应用
@@ -259,7 +290,7 @@ control MyDeparser(packet_out packet, in headers hdr) {
         /* TODO: emit ipv4_option, mri and swtraces headers */
         packet.emit(hdr.ipv4_option);
         packet.emit(hdr.mri);
-        packet.emit(hdr.swtraces);
+        packet.emit(hdr.swtraces);//解析后的头部必须再次添加到数据包中
     }
 }
 
