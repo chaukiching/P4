@@ -133,9 +133,9 @@ control MyEgress(inout headers hdr,
         hdr.ipv4.ecn = 3;
     }
     apply {
-        if (hdr.ipv4.ecn == 1 || hdr.ipv4.ecn == 2){ //在ECN为默认的1或2的前提下
+        if (hdr.ipv4.ecn == 1 || hdr.ipv4.ecn == 2){ //在ECN为默认的1或2的前提下，表示正常传输
             if (standard_metadata.enq_qdepth >= ECN_THRESHOLD){ //判断拥塞发生条件，检查队列长度standard_metadata.enq_qdepth是否超过阈值ECN_THRESHOLD
-                mark_ecn(); //若超出阈值，则设置ipv4.ecn值为3
+                mark_ecn(); //若超出阈值，则设置ipv4.ecn值为3，表示拥塞
             }
         }
     }
