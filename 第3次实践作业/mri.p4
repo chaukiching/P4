@@ -191,19 +191,20 @@ control MyEgress(inout headers hdr,
                  inout metadata meta,
                  inout standard_metadata_t standard_metadata) {
     action add_swtrace(switchID_t swid) {
-        hdr.mri.count = hdr.mri.count + 1;
-        hdr.swtraces.push_front(1);
+        hdr.mri.count = hdr.mri.count + 1; //hdr.mri.count增加1，表示传输路径上增加1跳交换机（相当于路由）
+        hdr.swtraces.push_front(1); //调用push_front(1)来添加1个新的swtrace头
         // According to the P4_16 spec, pushed elements are invalid, so we need
         // to call setValid(). Older bmv2 versions would mark the new header(s)
         // valid automatically (P4_14 behavior), but starting with version 1.11,
         // bmv2 conforms with the P4_16 spec.
-        hdr.swtraces[0].setValid();
-        hdr.swtraces[0].swid = swid;
-        hdr.swtraces[0].qdepth = (qdepth_t)standard_metadata.deq_qdepth;
+        hdr.swtraces[0].setValid(); //需要额外调用setValid()使新增的头部（在队首，hdr.swtraces[0]）生效
+        hdr.swtraces[0].swid = swid; //设置为当前交换机的id
+        hdr.swtraces[0].qdepth = (qdepth_t)standard_metadata.deq_qdepth; //设置为标准元数据记录的实时队列长度
 
-        hdr.ipv4.ihl = hdr.ipv4.ihl + 2;
-        hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength + 8;
-        hdr.ipv4.totalLen = hdr.ipv4.totalLen + 8;
+        hdr.ipv4.ihl = hdr.ipv4.ihl + 2; //hdr.ipv4.ihl（首部长度）加2，即增加64bits，因为每个Switch_t是64bits，包含32bits的swid和32bits的qdepth
+        hdr.ipv4_option.optionLength = hdr.ipv4_option.optionLength + 8; //hdr.ipv4.totalLen加8 bytes
+        hdr.ipv4.totalLen = hdr.ipv4.totalLen + 8; //hdr.ipv4_option.optionLength加8 bytes
+
     }
 
     table swtrace {
@@ -218,7 +219,7 @@ control MyEgress(inout headers hdr,
     apply {
         if (hdr.mri.isValid()) {
             swtrace.apply();
-        }
+        }//只有当mri头部有效，swtrace表才可以被应用
     }
 }
 
