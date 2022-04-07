@@ -47,12 +47,12 @@ header ipv4_option_t {
 }
 
 header mri_t {
-    bit<16>  count;
+    bit<16>  count; //表示交换机ID 的数量
 }
 
 header switch_t {
-    switchID_t  swid;
-    qdepth_t    qdepth;
+    switchID_t  swid; //表示数据包经过的每一跳交换机的ID
+    qdepth_t    qdepth; //表示整体的传输队列长度
 }
 
 struct ingress_metadata_t {
@@ -60,7 +60,7 @@ struct ingress_metadata_t {
 }
 
 struct parser_metadata_t {
-    bit<16>  remaining;
+    bit<16>  remaining; //用来跟踪需要解析多少个switch_t头部信息
 }
 
 struct metadata {
@@ -109,28 +109,28 @@ parser MyParser(packet_in packet,
     }
 
     state parse_ipv4_option {
-        packet.extract(hdr.ipv4_option);
-        transition select(hdr.ipv4_option.option) {
-            IPV4_OPTION_MRI: parse_mri;
+        packet.extract(hdr.ipv4_option); //提取ipv4_option包头
+        transition select(hdr.ipv4_option.option) { //选择hdr.ipv4_option.option的值
+            IPV4_OPTION_MRI: parse_mri; //如果值等于IPV4_OPTION_MRI，则转换到parse_mri状态
             default: accept;
         }
     }
 
     state parse_mri {
-        packet.extract(hdr.mri);
-        meta.parser_metadata.remaining = hdr.mri.count;
-        transition select(meta.parser_metadata.remaining) {
-            0 : accept;
-            default: parse_swtrace;
+        packet.extract(hdr.mri); //提取mri包头
+        meta.parser_metadata.remaining = hdr.mri.count; //在parse_mri状态下，remaining字段的值应该设置为hdr.mri.count
+        transition select(meta.parser_metadata.remaining) { //选择meta.parser_metadata.remaining的值
+            0 : accept; //如果值为0，则接受
+            default: parse_swtrace; //否则转换到parse_swtrace状态
         }
     }
 
     state parse_swtrace {
-        packet.extract(hdr.swtraces.next);
-        meta.parser_metadata.remaining = meta.parser_metadata.remaining  - 1;
+        packet.extract(hdr.swtraces.next); //提取swtraces.next包头
+        meta.parser_metadata.remaining = meta.parser_metadata.remaining  - 1; //在parse_swtrace状态下，remaining字段的值应该递减
         transition select(meta.parser_metadata.remaining) {
-            0 : accept;
-            default: parse_swtrace;
+            0 : accept; ////如果值为0，则接受
+            default: parse_swtrace; //parse_swtrace状态应递归循环转移到自身，直到remaining=0
         }
     }
 }
@@ -211,6 +211,7 @@ control MyEgress(inout headers hdr,
             add_swtrace;
             NoAction;
         }
+        
         default_action = NoAction();
     }
 
@@ -253,6 +254,8 @@ control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv4);
+        
+        /* TODO: emit ipv4_option, mri and swtraces headers */
         packet.emit(hdr.ipv4_option);
         packet.emit(hdr.mri);
         packet.emit(hdr.swtraces);
