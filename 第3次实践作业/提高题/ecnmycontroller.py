@@ -39,11 +39,8 @@ def main(p4info_file_path, bmv2_file_path):
     p4info_helper = p4runtime_lib.helper.P4InfoHelper(p4info_file_path) # 初始化 p4info_helper
 
     try:
-        # Create a switch connection object for s1 and s2;
-        # 为s1和s2创建交换机连接对象
-        # this is backed by a P4Runtime gRPC connection.
+        # 为s1、s2、s3创建交换机连接对象
         # 这是由一个运行时gRPC连接支持的
-        # Also, dump all P4Runtime messages sent to switch to given txt files.
         # 此外，将发送给交换机的所有 P4Runtime 消息转存到给定的 txt 文件
         s1 = p4runtime_lib.bmv2.Bmv2SwitchConnection(
             name='s1',
@@ -79,30 +76,34 @@ def main(p4info_file_path, bmv2_file_path):
                                        bmv2_json_file_path=bmv2_file_path)
         print("Installed P4 Program using SetForwardingPipelineConfig on s3")
 
-        # Write the rules that tunnel traffic from h1 to h2
         writeRules(p4info_helper, ingress_sw=s1,
-                         dst_eth_addr="08:00:00:00:02:00", dst_ip_addr=["10.0.2.0", 24], switch_port=3)
-
-        # Write the rules that tunnel traffic from h2 to h1
-        writeRules(p4info_helper, ingress_sw=s2,
-                         dst_eth_addr="08:00:00:00:01:00", dst_ip_addr=["10.0.1.0", 24], switch_port=3)
-        
-        # Write the rules that tunnel traffic from h1 to h3
+                         dst_eth_addr="08:00:00:00:01:01", dst_ip_addr=("10.0.1.1", 32), switch_port=2)
         writeRules(p4info_helper, ingress_sw=s1,
-                         dst_eth_addr="08:00:00:00:03:00", dst_ip_addr=["10.0.3.0", 24], switch_port=4)
-        
-        # Write the rules that tunnel traffic from h3 to h1
-        writeRules(p4info_helper, ingress_sw=s3,
-                         dst_eth_addr="08:00:00:00:01:00", dst_ip_addr=["10.0.1.0", 24], switch_port=2)
-        
-        # Write the rules that tunnel traffic from h2 to h3
+                         dst_eth_addr="08:00:00:00:01:11", dst_ip_addr=("10.0.1.11", 32), switch_port=1)
+        writeRules(p4info_helper, ingress_sw=s1,
+                         dst_eth_addr="08:00:00:00:02:00", dst_ip_addr=("10.0.2.0", 24), switch_port=3)
+        writeRules(p4info_helper, ingress_sw=s1,
+                         dst_eth_addr="08:00:00:00:03:00", dst_ip_addr=("10.0.3.0", 24), switch_port=4)
+    
         writeRules(p4info_helper, ingress_sw=s2,
-                         dst_eth_addr="08:00:00:00:03:00", dst_ip_addr=["10.0.3.0", 24], switch_port=4)
+                         dst_eth_addr="08:00:00:00:02:02", dst_ip_addr=("10.0.2.2", 32), switch_port=2)
+        writeRules(p4info_helper, ingress_sw=s2,
+                         dst_eth_addr="08:00:00:00:02:22", dst_ip_addr=("10.0.2.22", 32), switch_port=1)
+        writeRules(p4info_helper, ingress_sw=s2,
+                         dst_eth_addr="08:00:00:00:01:00", dst_ip_addr=("10.0.1.0", 24), switch_port=3)
+        writeRules(p4info_helper, ingress_sw=s2,
+                         dst_eth_addr="08:00:00:00:03:00", dst_ip_addr=("10.0.3.0", 24), switch_port=4)
         
-        # Write the rules that tunnel traffic from h3 to h2
         writeRules(p4info_helper, ingress_sw=s3,
-                         dst_eth_addr="08:00:00:00:02:00", dst_ip_addr=["10.0.2.0", 24], switch_port=3)
+                         dst_eth_addr="08:00:00:00:03:03", dst_ip_addr=("10.0.3.3", 32), switch_port=1)
+        writeRules(p4info_helper, ingress_sw=s3,
+                         dst_eth_addr="08:00:00:00:01:00", dst_ip_addr=("10.0.1.0", 24), switch_port=2)
+        writeRules(p4info_helper, ingress_sw=s3,
+                         dst_eth_addr="08:00:00:00:02:00", dst_ip_addr=("10.0.2.0", 24), switch_port=3)
         
+        while True:
+            sleep(2)
+            
     except KeyboardInterrupt:
         print(" Shutting down.")
     except grpc.RpcError as e:
@@ -114,7 +115,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='P4Runtime Controller')
     parser.add_argument('--p4info', help='p4info proto in text format from p4c',
                         type=str, action="store", required=False,
-                        default='./build/ecn.p4info.txt')
+                        default='./build/ecn.p4.p4info.txt')
     parser.add_argument('--bmv2-json', help='BMv2 JSON file from p4c',
                         type=str, action="store", required=False,
                         default='./build/ecn.json')
