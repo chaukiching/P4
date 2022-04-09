@@ -34,6 +34,19 @@ def writeRules(p4info_helper, ingress_sw,
     ingress_sw.WriteTableEntry(table_entry) # 调用 WriteTableEntry ，将生成的匹配动作表项加入交换机
     print("Installed rule on %s" % ingress_sw.name)
 
+def writeswtrace(p4info_helper, egress_sw,
+                     switch_id):
+    
+    table_entry = p4info_helper.buildTableEntry(
+        table_name="MyEgress.swtrace", # 定义表名
+        action_name="add_swtrace", # 定义动作名
+        action_params={ 
+            "swid": switch_id
+        })
+    # 需要使用 p4info_helper 解析器来将规则转化为 P4Runtime 能够识别的形式
+    egress_sw.WriteTableEntry(table_entry) # 调用 WriteTableEntry ，将生成的匹配动作表项加入交换机
+    print("Installed rule on %s" % egress_sw.name)
+
 def main(p4info_file_path, bmv2_file_path):
     # Instantiate a P4Runtime helper from the p4info file
     p4info_helper = p4runtime_lib.helper.P4InfoHelper(p4info_file_path) # 初始化 p4info_helper
@@ -101,6 +114,9 @@ def main(p4info_file_path, bmv2_file_path):
         writeRules(p4info_helper, ingress_sw=s3,
                          dst_eth_addr="08:00:00:00:02:00", dst_ip_addr=("10.0.2.0", 24), switch_port=3)
         
+        writeswtrace(p4info_helper,s1,1)
+        writeswtrace(p4info_helper,s2,2)
+        writeswtrace(p4info_helper,s3,3)
         while True:
             sleep(2)
             
