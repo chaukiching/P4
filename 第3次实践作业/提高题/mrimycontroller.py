@@ -18,7 +18,7 @@ from p4runtime_lib.switch import ShutdownAllSwitchConnections
 
 def writeRules(p4info_helper, ingress_sw,
                      dst_eth_addr, dst_ip_addr, switch_port):
-    
+
     table_entry = p4info_helper.buildTableEntry(
         table_name="MyIngress.ipv4_lpm", # 定义表名
         match_fields={
@@ -26,21 +26,21 @@ def writeRules(p4info_helper, ingress_sw,
             # 若包头对应的 hdr.ipv4.dstAddr 字段与参数中的 dst_ip_addr 匹配，则执行这一条表项的对应动作
         }, # 设置匹配域
         action_name="MyIngress.ipv4_forward", # 定义动作名
-        action_params={ 
+        action_params={
             "dstAddr": dst_eth_addr,
-            "port": switch_port 
+            "port": switch_port
         })
     # 需要使用 p4info_helper 解析器来将规则转化为 P4Runtime 能够识别的形式
     ingress_sw.WriteTableEntry(table_entry) # 调用 WriteTableEntry ，将生成的匹配动作表项加入交换机
     print("Installed rule on %s" % ingress_sw.name)
 
 def writeswtrace(p4info_helper, egress_sw,
-                     switch_id):
-    
+                        switch_id):
+
     table_entry = p4info_helper.buildTableEntry(
         table_name="MyEgress.swtrace", # 定义表名
-        action_name="add_swtrace", # 定义动作名
-        action_params={ 
+        action_name="MyEgress.add_swtrace", # 定义动作名
+        action_params={
             "swid": switch_id
         })
     # 需要使用 p4info_helper 解析器来将规则转化为 P4Runtime 能够识别的形式
@@ -97,7 +97,7 @@ def main(p4info_file_path, bmv2_file_path):
                          dst_eth_addr="08:00:00:00:02:00", dst_ip_addr=("10.0.2.0", 24), switch_port=3)
         writeRules(p4info_helper, ingress_sw=s1,
                          dst_eth_addr="08:00:00:00:03:00", dst_ip_addr=("10.0.3.0", 24), switch_port=4)
-    
+
         writeRules(p4info_helper, ingress_sw=s2,
                          dst_eth_addr="08:00:00:00:02:02", dst_ip_addr=("10.0.2.2", 32), switch_port=2)
         writeRules(p4info_helper, ingress_sw=s2,
@@ -106,20 +106,21 @@ def main(p4info_file_path, bmv2_file_path):
                          dst_eth_addr="08:00:00:00:01:00", dst_ip_addr=("10.0.1.0", 24), switch_port=3)
         writeRules(p4info_helper, ingress_sw=s2,
                          dst_eth_addr="08:00:00:00:03:00", dst_ip_addr=("10.0.3.0", 24), switch_port=4)
-        
+
         writeRules(p4info_helper, ingress_sw=s3,
                          dst_eth_addr="08:00:00:00:03:03", dst_ip_addr=("10.0.3.3", 32), switch_port=1)
         writeRules(p4info_helper, ingress_sw=s3,
                          dst_eth_addr="08:00:00:00:01:00", dst_ip_addr=("10.0.1.0", 24), switch_port=2)
         writeRules(p4info_helper, ingress_sw=s3,
                          dst_eth_addr="08:00:00:00:02:00", dst_ip_addr=("10.0.2.0", 24), switch_port=3)
-        
-        writeswtrace(p4info_helper,s1,1)
-        writeswtrace(p4info_helper,s2,2)
-        writeswtrace(p4info_helper,s3,3)
+
+        writeswtrace(p4info_helper,egress_sw=s1,switch_id=1)
+        writeswtrace(p4info_helper,egress_sw=s2,switch_id=2)
+        writeswtrace(p4info_helper,egress_sw=s3,switch_id=3)
+
         while True:
             sleep(2)
-            
+
     except KeyboardInterrupt:
         print(" Shutting down.")
     except grpc.RpcError as e:
