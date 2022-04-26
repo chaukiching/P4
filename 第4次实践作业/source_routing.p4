@@ -22,8 +22,8 @@ header ethernet_t {
 }
 
 header srcRoute_t {
-    bit<1>    bos;
-    bit<15>   port;
+    bit<1>    bos;  //表示是否为堆栈底部
+    bit<15>   port;  //表示为出端口
 }
 
 header ipv4_t {
@@ -73,7 +73,7 @@ parser MyParser(packet_in packet,
          * otherwise transition to accept.
          */
         transition select(hdr.ethernet.etherType) {
-            TYPE_SRCROUTING: parse_srcRouting;
+            TYPE_SRCROUTING: parse_srcRouting;  //只有当etherType类型值是0x1234才解析源路由
             default: accept;
         }
     }
@@ -84,8 +84,9 @@ parser MyParser(packet_in packet,
          * while hdr.srcRoutes.last.bos is 0 transition to this state
          * otherwise parse ipv4
          */
-        transition select(hdr.srcRoutes.last.bos) {
-            1: parse_ipv4;
+        packet.extract(hdr.srcRoutes.next);  //抽取包头，使用next移动指针
+        transition select(hdr.srcRoutes.last.bos) {  //堆栈中上一层的元素
+            1: parse_ipv4;  
             default: parse_srcRouting;
         }
     }
@@ -125,27 +126,28 @@ control MyIngress(inout headers hdr,
          * to the port in hdr.srcRoutes[0] and
          * pop an entry from hdr.srcRoutes
          */
-        standard_metadata.egress_spec = (bit<9>)hdr.srcRoutes[0].port;
-        hdr.srcRoutes.pop_front(1);
+        standard_metadata.egress_spec = (bit<9>)hdr.srcRoutes[0].port;  //配置下一跳的输出端口，和IP转发类似，通过设置标准元数据的输出端口egress_spec即可
+        hdr.srcRoutes.pop_front(1);  //删除srcRoutes的第一个条目，运用堆栈的操作pop_front(1)实现将栈顶往下数的1个元素弹出
+        //当数据包每到达一跳交换机时，交换机将一个项目（即输出端口）弹出堆栈顶部，并根据指定的输出端口号port转发数据包
     }
 
     action srcRoute_finish() {
-        hdr.ethernet.etherType = TYPE_IPV4;
+        hdr.ethernet.etherType = TYPE_IPV4;  //修改etherType跳到IP解析
     }
 
     action update_ttl(){
-        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;  //使用源路由转发数据包，IPv4的TTL同步递减
     }
 
     apply {
-        if (hdr.srcRoutes[0].isValid()){
+        if (hdr.srcRoutes[0].isValid()){  //检查源路由（srcRoutes[0]）是否存在
             /*
              * TODO: add logic to:
              * - If final srcRoutes (top of stack has bos==1):
              *   - change etherType to IP
              * - choose next hop and remove top of srcRoutes stack
              */
-            if (hdr.srcRoutes[0].bos == 1){
+            if (hdr.srcRoutes[0].bos == 1){  //特定值bos为1，表示到达堆栈底部，为最后一跳
                 srcRoute_finish();
             }
             srcRoute_nhop();
@@ -153,7 +155,7 @@ control MyIngress(inout headers hdr,
                 update_ttl();
             }
         }else{
-            drop();
+            drop();  //如果源路由无效，则丢包
         }
     }
 }
