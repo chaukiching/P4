@@ -167,27 +167,27 @@ control MyIngress(inout headers hdr,
     /*各类运算的动作实现，只要传入p4calc头部的A和B操作数。*/
     action operation_add() {
         /* TODO call send_back with operand_a + operand_b */
-        send_back(hdr.p4calc.operand_a + hdr.p4calc.operand_b);
+        send_back(hdr.p4calc.operand_a + hdr.p4calc.operand_b);  //加运算
     }
 
     action operation_sub() {
         /* TODO call send_back with operand_a - operand_b */
-        send_back(hdr.p4calc.operand_a - hdr.p4calc.operand_b);
+        send_back(hdr.p4calc.operand_a - hdr.p4calc.operand_b);  //减运算
     }
 
     action operation_and() {
         /* TODO call send_back with operand_a & operand_b */
-        send_back(hdr.p4calc.operand_a & hdr.p4calc.operand_b);
+        send_back(hdr.p4calc.operand_a & hdr.p4calc.operand_b);  //与运算
     }
 
     action operation_or() {
         /* TODO call send_back with operand_a | operand_b */
-        send_back(hdr.p4calc.operand_a | hdr.p4calc.operand_b);
+        send_back(hdr.p4calc.operand_a | hdr.p4calc.operand_b);  //或运算
     }
 
     action operation_xor() {
         /* TODO call send_back with operand_a ^ operand_b */
-        send_back(hdr.p4calc.operand_a ^ hdr.p4calc.operand_b);
+        send_back(hdr.p4calc.operand_a ^ hdr.p4calc.operand_b);  //按位或运算
     }
 
     action operation_drop() {
