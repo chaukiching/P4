@@ -68,7 +68,6 @@ const bit<8>  P4CALC_OR    = 0x7c;   // '|'
 const bit<8>  P4CALC_CARET = 0x5e;   // '^'
 
 header p4calc_t {
-    bit<8>  op;
 /* TODO
  * fill p4calc_t header with P, four, ver, op, operand_a, operand_b, and res
    entries based on above protocol header definition.
@@ -76,6 +75,7 @@ header p4calc_t {
     bit<8>  p;
     bit<8>  four;
     bit<8>  ver;
+    bit<8>  op;
     bit<32> operand_a;
     bit<32> operand_b;
     bit<32> res;
@@ -122,7 +122,7 @@ parser MyParser(packet_in packet,
         transition select(packet.lookahead<p4calc_t>().p,
         packet.lookahead<p4calc_t>().four,
         packet.lookahead<p4calc_t>().ver) {
-            (P4CALC_P, P4CALC_4, P4CALC_VER) : parse_p4calc;
+            (P4CALC_P, P4CALC_4, P4CALC_VER) : parse_p4calc;  //同时通过（P、4、Version）去判断是否为计算器头部信息
             default                          : accept;
         }
     }
@@ -157,13 +157,14 @@ control MyIngress(inout headers hdr,
              standard_metadata.egress_spec
          */
         bit<48> tmp;
-        hdr.p4calc.res = result;
+        hdr.p4calc.res = result;  //把参数result赋值给p4calc头部的result字段
         tmp = hdr.ethernet.dstAddr;
         hdr.ethernet.dstAddr = hdr.ethernet.srcAddr;
-        hdr.ethernet.srcAddr = tmp;
-        standard_metadata.egress_spec = standard_metadata.ingress_port;
+        hdr.ethernet.srcAddr = tmp;  //交换源MAC和目的MAC
+        standard_metadata.egress_spec = standard_metadata.ingress_port;  //通过标准元数据设置，让数据包从进入的端口输出返回
     }
 
+    /*各类运算的动作实现，只要传入p4calc头部的A和B操作数。*/
     action operation_add() {
         /* TODO call send_back with operand_a + operand_b */
         send_back(hdr.p4calc.operand_a + hdr.p4calc.operand_b);
@@ -195,7 +196,7 @@ control MyIngress(inout headers hdr,
 
     table calculate {
         key = {
-            hdr.p4calc.op        : exact;
+            hdr.p4calc.op        : exact;  //精确匹配hdr.p4calc.op的值，确定需要调用的操作动作actions
         }
         actions = {
             operation_add;
@@ -212,7 +213,7 @@ control MyIngress(inout headers hdr,
             P4CALC_AND  : operation_and();
             P4CALC_OR   : operation_or();
             P4CALC_CARET: operation_xor();
-        }
+        }  //由于没有提供控制平面的规则，所以在表的实现上添加了default_action和const entries
     }
 
     apply {
