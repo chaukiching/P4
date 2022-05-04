@@ -42,7 +42,7 @@ header ipv4_t {
     bit<4>    version;
     bit<4>    ihl;
     bit<6>    diffserv;
-    bit<2>    ecn;
+    bit<2>    ecn;  //将ipv4_t头部的8比特位的tos字段拆分成6比特位的diffserv字段和2比特位的ecn字段
     bit<16>   totalLen;
     bit<16>   identification;
     bit<3>    flags;
@@ -120,15 +120,16 @@ control MyIngress(inout headers hdr,
 
 /* TODO: Implement actions for different traffic classes */
     
+    //针对不同的流量等级实施措施
     /* Default Forwarding */
     action default_forwarding() {
         hdr.ipv4.diffserv = 0;
-    }
+    }  //默认转发
 
     /* Expedited Forwarding */
     action expedited_forwarding() {
         hdr.ipv4.diffserv = 46;
-    }
+    }  //加速转发
 
     /* Voice Admit */
     action voice_admit() {
@@ -136,6 +137,7 @@ control MyIngress(inout headers hdr,
     }
 
     /* Assured Forwarding */
+    //保证转发
     /* Class 1 Low drop probability */
     action af_11() {
         hdr.ipv4.diffserv = 10;
@@ -210,6 +212,7 @@ control MyIngress(inout headers hdr,
     }
 
 /* TODO: set hdr.ipv4.diffserv on the basis of protocol */
+//基于协议设置hdr.ipv4.diffserv的值
     apply {
         if (hdr.ipv4.isValid()) {
             if (hdr.ipv4.protocol == IP_PROTOCOLS_UDP) {
@@ -218,6 +221,7 @@ control MyIngress(inout headers hdr,
             else if (hdr.ipv4.protocol == IP_PROTOCOLS_TCP) {
                 voice_admit();
             }
+            //判断ip的protocol字段，针对TCP和UDP不同的流实现相应的动作，设置ipv4.diffserv的值进行标识
             ipv4_lpm.apply();
         }
     }
@@ -257,6 +261,7 @@ control MyComputeChecksum(inout headers hdr, inout metadata meta) {
               hdr.ipv4.dstAddr },
             hdr.ipv4.hdrChecksum,
             HashAlgorithm.csum16);
+            //同步更新CheckSum模块，如此一来整个IP头部内部的字段含义发生了变化，但是总的头部长度不变
     }
 }
 
