@@ -113,6 +113,8 @@ control MyIngress(inout headers hdr,
               hdr.tcp.srcPort,
               hdr.tcp.dstPort },
             ecmp_count);
+            //计算出源IP、目的IP、IP协议、源TCP端口、目的TCP端口组成的5元组的哈希值，存储在meta.ecmp_select，以便ecmp_nhop表做出相应的转发决策
+            //计算出的哈希值应在区间[base，base+max-1]范围内
     }
     action set_nhop(bit<48> nhop_dmac, bit<32> nhop_ipv4, bit<9> port) {
         hdr.ethernet.dstAddr = nhop_dmac;
@@ -139,7 +141,7 @@ control MyIngress(inout headers hdr,
             set_nhop;
         }
         size = 2;
-    }
+    }  //由ecmp_nhop表精确匹配存储在meta.ecmp_select中的哈希值，根据哈希值在动作set_nhop确定下一跳
     apply {
         /* TODO: apply ecmp_group table and ecmp_nhop table if IPv4 header is
          * valid and TTL hasn't reached zero
@@ -147,7 +149,7 @@ control MyIngress(inout headers hdr,
         if (hdr.ipv4.isValid() && hdr.ipv4.ttl > 0) {
             ecmp_group.apply();
             ecmp_nhop.apply();
-        }
+        }  //如果ipv4的头部有效且ttl未到达0，则应用ecmp_group表和ecmp_nhop表
     }
 }
 
