@@ -121,81 +121,12 @@ control MyIngress(inout headers hdr,
 /* TODO: Implement actions for different traffic classes */
     
     //针对不同的流量等级实施措施
-    /* Default Forwarding */
-    action default_forwarding() {
-        hdr.ipv4.diffserv = 0;
-    }  //默认转发
-
-    /* Expedited Forwarding */
     action expedited_forwarding() {
         hdr.ipv4.diffserv = 46;
-    }  //加速转发
-
-    /* Voice Admit */
+    }
+    
     action voice_admit() {
         hdr.ipv4.diffserv = 44;
-    }
-
-    /* Assured Forwarding */
-    //保证转发
-    /* Class 1 Low drop probability */
-    action af_11() {
-        hdr.ipv4.diffserv = 10;
-    }
-
-    /* Class 1 Med drop probability */
-    action af_12() {
-        hdr.ipv4.diffserv = 12;
-    }
-
-    /* Class 1 High drop probability */
-    action af_13() {
-        hdr.ipv4.diffserv = 14;
-    }
-
-    /* Class 2 Low drop probability */
-    action af_21() {
-        hdr.ipv4.diffserv = 18;
-    }
-
-    /* Class 2 Med drop probability */
-    action af_22() {
-        hdr.ipv4.diffserv = 20;
-    }
-
-    /* Class 2 High drop probability */
-    action af_23() {
-        hdr.ipv4.diffserv = 22;
-    }
-
-    /* Class 3 Low drop probability */
-    action af_31() {
-        hdr.ipv4.diffserv = 26;
-    }
-
-    /* Class 3 Med drop probability */
-    action af_32() {
-        hdr.ipv4.diffserv = 28;
-    }
-
-    /* Class 3 High drop probability */
-    action af_33() {
-        hdr.ipv4.diffserv = 30;
-    }
-
-    /* Class 4 Low drop probability */
-    action af_41() {
-        hdr.ipv4.diffserv = 34;
-    }
-
-    /* Class 4 Med drop probability */
-    action af_42() {
-        hdr.ipv4.diffserv = 36;
-    }
-
-    /* Class 4 High drop probability */
-    action af_43() {
-        hdr.ipv4.diffserv = 38;
     }
 
     table ipv4_lpm {
