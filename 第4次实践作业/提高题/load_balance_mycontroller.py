@@ -41,7 +41,7 @@ def writeecmp_nhop(p4info_helper, ingress_sw,
         table_name="MyIngress.ecmp_nhop", # 定义表名
         match_fields={
             "meta.ecmp_select": result
-            # 若包头对应的 meta.ecmp_select 字段与参数中的 result 匹配，则执行这一条表项的对应动作
+            # 若 meta.ecmp_select 字段与参数中的 result 匹配，则执行这一条表项的对应动作
         }, # 设置匹配域
         action_name="MyIngress.set_nhop", # 定义动作名
         action_params={
@@ -60,7 +60,7 @@ def writesend_frame(p4info_helper, egress_sw,
         table_name="MyEgress.send_frame", # 定义表名
         match_fields={
             "standard_metadata.egress_port": egress_port
-            # 若包头对应的 standard_metadata.egress_port 字段与参数中的 egress_port 匹配，则执行这一条表项的对应动作
+            # 若 standard_metadata.egress_port 字段与参数中的 egress_port 匹配，则执行这一条表项的对应动作
         }, # 设置匹配域
         action_name="MyEgress.rewrite_mac", # 定义动作名
         action_params={
