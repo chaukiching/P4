@@ -52,7 +52,7 @@ def writeecmp_nhop(p4info_helper, ingress_sw,
     # 需要使用 p4info_helper 解析器来将规则转化为 P4Runtime 能够识别的形式
     ingress_sw.WriteTableEntry(table_entry) # 调用 WriteTableEntry ，将生成的匹配动作表项加入交换机
     print("Installed rule on %s" % ingress_sw.name)
-    
+
 def writesend_frame(p4info_helper, egress_sw,
                         egress_port, mac):
 
@@ -113,28 +113,28 @@ def main(p4info_file_path, bmv2_file_path):
         print("Installed P4 Program using SetForwardingPipelineConfig on s3")
 
         writeecmp_group(p4info_helper, ingress_sw=s1,
-                         dst_ip_addr=("10.0.1.1", 32), base=0, count=2)
+                         dst_ip_addr=("10.0.0.1", 32), base=0, count=2)
         writeecmp_nhop(p4info_helper, ingress_sw=s1,
-                         result=0, dmac="08:00:00:00:01:02", ipv4="10.0.2.2", switch_port=2)
+                         result=0, dmac="00:00:00:00:01:02", ipv4="10.0.2.2", switch_port=2)
         writeecmp_nhop(p4info_helper, ingress_sw=s1,
-                         result=1, dmac="08:00:00:00:01:03", ipv4="10.0.3.3", switch_port=3)
-        writesend_frame(p4info_helper, ingress_sw=s1,
+                         result=1, dmac="00:00:00:00:01:03", ipv4="10.0.3.3", switch_port=3)
+        writesend_frame(p4info_helper, egress_sw=s1,
                          egress_port=2, mac="00:00:00:01:02:00")
-        writesend_frame(p4info_helper, ingress_sw=s1,
+        writesend_frame(p4info_helper, egress_sw=s1,
                          egress_port=3, mac="00:00:00:01:03:00")
-        
+
         writeecmp_group(p4info_helper, ingress_sw=s2,
                          dst_ip_addr=("10.0.2.2", 32), base=0, count=1)
         writeecmp_nhop(p4info_helper, ingress_sw=s2,
                          result=0, dmac="08:00:00:00:02:02", ipv4="10.0.2.2", switch_port=1)
-        writesend_frame(p4info_helper, ingress_sw=s2,
+        writesend_frame(p4info_helper, egress_sw=s2,
                          egress_port=1, mac="00:00:00:02:01:00")
-        
+
         writeecmp_group(p4info_helper, ingress_sw=s3,
                          dst_ip_addr=("10.0.3.3", 32), base=0, count=1)
         writeecmp_nhop(p4info_helper, ingress_sw=s3,
                          result=0, dmac="08:00:00:00:03:03", ipv4="10.0.3.3", switch_port=1)
-        writesend_frame(p4info_helper, ingress_sw=s3,
+        writesend_frame(p4info_helper, egress_sw=s3,
                          egress_port=1, mac="00:00:00:03:01:00")
 
         while True:
