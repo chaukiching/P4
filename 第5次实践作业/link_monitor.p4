@@ -43,9 +43,10 @@ header ipv4_t {
 // packet has traversed so far.
 header probe_t {
     bit<8> hop_cnt;
-}
+}  //探针顶层头部，记录探针到目前为止一共探测了几跳路由（交换机）
 
 // The data added to the probe by each switch at each hop.
+// 每个交换机在每一跳添加到探针的数据
 header probe_data_t {
     bit<1>    bos;
     bit<7>    swid;
@@ -59,7 +60,7 @@ header probe_data_t {
 // packet out of. There is one of these headers for each hop.
 header probe_fwd_t {
     bit<8>   egress_spec;
-}
+}  //表示交换机发送探测报文的出口端口，每一跳都有一个这样的报头
 
 struct parser_metadata_t {
     bit<8>  remaining;
@@ -182,6 +183,7 @@ control MyIngress(inout headers hdr,
         else if (hdr.probe.isValid()) {
             standard_metadata.egress_spec = (bit<9>)meta.egress_spec;
             hdr.probe.hop_cnt = hdr.probe.hop_cnt + 1;
+            //根据egress_spec字段指定探测数据包输出端口，并且将hdr.probe.hop_cnt字段递增1
         }
     }
 }
@@ -215,10 +217,12 @@ control MyEgress(inout headers hdr,
         bit<32> byte_cnt;
         bit<32> new_byte_cnt;
         time_t last_time;
-        time_t cur_time = standard_metadata.egress_global_timestamp;
+        time_t cur_time = standard_metadata.egress_global_timestamp;  //通过标准元数据standard_metadata.egress_global_timestamp获取当前时间，单位微秒
         // increment byte cnt for this packet's port
         byte_cnt_reg.read(byte_cnt, (bit<32>)standard_metadata.egress_port);
         byte_cnt = byte_cnt + standard_metadata.packet_length;
+        //使用byte_cnt_reg寄存器来统计（将标准元数据standard_metadata.egress_port对应输出端口号做索引，读写寄存器)自上次探针通过端口以来，每个端口所经过的字节数
+(Bytes)，结果存入byte_cnt
         // reset the byte count when a probe packet passes through
         new_byte_cnt = (hdr.probe.isValid()) ? 0 : byte_cnt;
         byte_cnt_reg.write((bit<32>)standard_metadata.egress_port, new_byte_cnt);
@@ -227,6 +231,7 @@ control MyEgress(inout headers hdr,
             // fill out probe fields
             hdr.probe_data.push_front(1);
             hdr.probe_data[0].setValid();
+            //最新的probe_data加入堆栈(push_front(1))，用上面获得的数据更新hdr.probe_data[0],即填写bos(栈底)字段，以及swid(交换机ID)字段，实现增加probe_data头部信息到数据包中
             if (hdr.probe.hop_cnt == 1) {
                 hdr.probe_data[0].bos = 1;
             }
@@ -236,11 +241,13 @@ control MyEgress(inout headers hdr,
             // set switch ID field
             swid.apply();
             // TODO: fill out the rest of the probe packet fields
+            // 填写其余探测数据包字段
             // hdr.probe_data[0].port = ...
             // hdr.probe_data[0].byte_cnt = ...
             hdr.probe_data[0].port = (bit<8>)standard_metadata.egress_port;
             hdr.probe_data[0].byte_cnt = byte_cnt;
             // TODO: read / update the last_time_reg
+            // 读取/更新last_time_reg字段
             // last_time_reg.read(<val>, <index>);
             // last_time_reg.write(<index>, <val>);
             // hdr.probe_data[0].last_time = ...
