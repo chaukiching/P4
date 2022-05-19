@@ -22,7 +22,7 @@ header ethernet_t {
     macAddr_t dstAddr;
     macAddr_t srcAddr;
     bit<16>   etherType;
-}
+}  //以太网头部
 
 header ipv4_t {
     bit<4>    version;
@@ -37,7 +37,7 @@ header ipv4_t {
     bit<16>   hdrChecksum;
     ip4Addr_t srcAddr;
     ip4Addr_t dstAddr;
-}
+}  //ipv4头部
 
 header tcp_t{
     bit<16> srcPort;
@@ -57,7 +57,7 @@ header tcp_t{
     bit<16> window;
     bit<16> checksum;
     bit<16> urgentPtr;
-}
+}  //TCP头部
 
 struct metadata {
     /* empty */
@@ -133,6 +133,7 @@ control MyIngress(inout headers hdr,
 
     action compute_hashes(ip4Addr_t ipAddr1, ip4Addr_t ipAddr2, bit<16> port1, bit<16> port2){
        //Get register position
+       //分别使用crc16和crc32哈希算法计算布隆过滤器的两个哈希值，结果分别输出reg_pos_one和reg_pos_two
        hash(reg_pos_one, HashAlgorithm.crc16, (bit<32>)0, {ipAddr1,
                                                            ipAddr2,
                                                            port1,
@@ -147,7 +148,7 @@ control MyIngress(inout headers hdr,
                                                            hdr.ipv4.protocol},
                                                            (bit<32>)BLOOM_FILTER_ENTRIES);
     }
-
+    //用于哈希计算的输入base的值为0，max的值为4096，计算出的哈希值范围为[0，4095]
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
         standard_metadata.egress_spec = port;
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
@@ -169,18 +170,19 @@ control MyIngress(inout headers hdr,
     }
 
     action set_direction(bit<1> dir) {
-        direction = dir;
+        direction = dir; //dir表示数据流向
     }
 
     table check_ports {
         key = {
             standard_metadata.ingress_port: exact;
-            standard_metadata.egress_spec: exact;
+            standard_metadata.egress_spec: exact;  //精确匹配标准元数据的输入输出端口
         }
         actions = {
             set_direction;
             NoAction;
         }
+        //如果数据包是进入内部网络，那么set_direction动作设置方向值为1;如果是从内部网络发出，设置方向值为0
         size = 1024;
         default_action = NoAction();
     }
@@ -199,22 +201,27 @@ control MyIngress(inout headers hdr,
                         compute_hashes(hdr.ipv4.dstAddr, hdr.ipv4.srcAddr, hdr.tcp.dstPort, hdr.tcp.srcPort);
                     }
                     // Packet comes from internal network
+                    //TCP数据包正从内部网络传出
                     if (direction == 0){
                         // TODO: this packet is part of an outgoing TCP connection.
                         //   We need to set the bloom filter if this is a SYN packet
                         //   E.g. bloom_filter_1.write(<index>, <value>);
+                        //TCP数据包是SYN数据包，则将哈希值reg_pos_one和reg_pos_two作为布隆过滤器的索引，在对应索引位置写入值1
                         if (hdr.tcp.syn == 1){
                             bloom_filter_1.write(reg_pos_one, 1);
                             bloom_filter_2.write(reg_pos_two, 1);
                         }
                     }
                     // Packet comes from outside
+                    //TCP数据包进入内部网络
                     else if (direction == 1){
                         // TODO: this packet is part of an incomming TCP connection.
                         //   We need to check if this packet is allowed to pass by reading the bloom filter
                         //   E.g. bloom_filter_1.read(<value>, <index>);
+                        //计算出的bit位置读取两个Bloom Filter数组
                         bloom_filter_1.read(reg_val_one, reg_pos_one);
                         bloom_filter_2.read(reg_val_two, reg_pos_two);
+                        //仅当两个条⽬都设置为1才允许流通过，如果任意一个数组为空则丢弃
                         if (reg_val_one != 1 || reg_val_two != 1){
                             drop();
                         }
