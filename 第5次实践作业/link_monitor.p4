@@ -221,8 +221,7 @@ control MyEgress(inout headers hdr,
         // increment byte cnt for this packet's port
         byte_cnt_reg.read(byte_cnt, (bit<32>)standard_metadata.egress_port);
         byte_cnt = byte_cnt + standard_metadata.packet_length;
-        //使用byte_cnt_reg寄存器来统计（将标准元数据standard_metadata.egress_port对应输出端口号做索引，读写寄存器)自上次探针通过端口以来，每个端口所经过的字节数
-(Bytes)，结果存入byte_cnt
+        //使用byte_cnt_reg寄存器来统计（将标准元数据standard_metadata.egress_port对应输出端口号做索引，读写寄存器)自上次探针通过端口以来，每个端口所经过的字节数(Bytes)，结果存入byte_cnt
         // reset the byte count when a probe packet passes through
         new_byte_cnt = (hdr.probe.isValid()) ? 0 : byte_cnt;
         byte_cnt_reg.write((bit<32>)standard_metadata.egress_port, new_byte_cnt);
